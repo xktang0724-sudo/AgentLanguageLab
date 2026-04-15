@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="980" viewBox="0 0 1280 980" role="img" aria-labelledby="title desc">
+  <title id="title">Minimal Agent Loop Architecture</title>
+  <desc id="desc">A simplified layered architecture diagram for the minimal agent loop with a single main execution path.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fbff" />
+      <stop offset="100%" stop-color="#eef4fb" />
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5c7792" />
+    </marker>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #16324f; }
+      .subtitle { font: 14px Arial, sans-serif; fill: #506276; }
+      .layer-title { font: 700 15px Arial, sans-serif; fill: #1f3347; letter-spacing: 1px; }
+      .box-title { font: 700 16px Arial, sans-serif; fill: #162535; }
+      .box-text { font: 13px Arial, sans-serif; fill: #465a6f; }
+      .small-text { font: 12px Arial, sans-serif; fill: #5a6e83; }
+      .flow { font: 12px Arial, sans-serif; fill: #5c7792; }
+      .layer { stroke: rgba(33, 50, 69, 0.10); stroke-width: 1; }
+      .box { fill: rgba(255, 255, 255, 0.96); stroke: rgba(33, 50, 69, 0.12); stroke-width: 1; }
+      .accent { fill: #fffdfa; stroke: #d7c9a0; stroke-width: 1; }
+      .side { fill: rgba(255, 255, 255, 0.72); stroke: rgba(33, 50, 69, 0.10); stroke-width: 1; }
+      .arrow { fill: none; stroke: #5c7792; stroke-width: 2.4; marker-end: url(#arrow); }
+      .dash { fill: none; stroke: #8aa3ba; stroke-width: 2; stroke-dasharray: 6 6; marker-end: url(#arrow); }
+      .note { font: 12px Arial, sans-serif; fill: #667b90; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1280" height="980" fill="url(#bg)" />
+
+  <text x="60" y="56" class="title">Minimal Agent Loop</text>
+  <text x="60" y="84" class="subtitle">收敛后的视图只强调一条主执行路径，辅助关系改成弱连接，避免线条打架。</text>
+
+  <rect x="40" y="110" rx="18" ry="18" width="1200" height="150" fill="#eaf4ff" class="layer" />
+  <text x="64" y="140" class="layer-title">USER LAYER</text>
+  <rect x="120" y="170" rx="12" ry="12" width="300" height="70" class="box" />
+  <text x="144" y="197" class="box-title">User Input</text>
+  <text x="144" y="219" class="small-text">用户输入任务，例如 hello</text>
+  <rect x="490" y="170" rx="12" ry="12" width="300" height="70" class="box" />
+  <text x="514" y="197" class="box-title">runDemo()</text>
+  <text x="514" y="219" class="small-text">组装 DemoModel + DemoExecutor</text>
+  <rect x="860" y="170" rx="12" ry="12" width="280" height="70" class="side" />
+  <text x="884" y="197" class="box-title">Demo Output</text>
+  <text x="884" y="219" class="small-text">展示最终 answer / steps / trace</text>
+  <path d="M 420 205 L 490 205" class="arrow" />
+
+  <rect x="40" y="285" rx="18" ry="18" width="1200" height="160" fill="#eefbf3" class="layer" />
+  <text x="64" y="315" class="layer-title">APPLICATION LAYER</text>
+  <rect x="410" y="338" rx="12" ry="12" width="460" height="78" class="box" />
+  <text x="434" y="368" class="box-title">runAgentLoop()</text>
+  <text x="434" y="390" class="box-text">主循环：驱动步骤推进、终止条件和统一返回结果</text>
+  <rect x="110" y="338" rx="12" ry="12" width="220" height="78" class="side" />
+  <text x="134" y="368" class="box-title">maxSteps</text>
+  <text x="134" y="390" class="small-text">限制循环轮数</text>
+  <rect x="950" y="338" rx="12" ry="12" width="200" height="78" class="side" />
+  <text x="974" y="368" class="box-title">executeAction()</text>
+  <text x="974" y="390" class="small-text">处理 builtin_call</text>
+  <path d="M 640 240 L 640 338" class="arrow" />
+  <path d="M 330 377 L 410 377" class="dash" />
+  <path d="M 870 377 L 950 377" class="dash" />
+  <text x="480" y="436" class="flow">主路径只保留 loop 本身，maxSteps 和 executeAction 作为 loop 的内部能力展示</text>
+
+  <rect x="40" y="470" rx="18" ry="18" width="1200" height="230" fill="#fff8e8" class="layer" />
+  <text x="64" y="500" class="layer-title">AI / LOGIC LAYER</text>
+  <rect x="110" y="530" rx="12" ry="12" width="280" height="76" class="box" />
+  <text x="134" y="560" class="box-title">ModelClient</text>
+  <text x="134" y="582" class="small-text">decideNextAction(context)</text>
+  <rect x="110" y="618" rx="12" ry="12" width="280" height="58" class="side" />
+  <text x="134" y="650" class="small-text">DemoModel 是当前实现</text>
+
+  <rect x="500" y="530" rx="12" ry="12" width="280" height="76" class="accent" />
+  <text x="524" y="560" class="box-title">AgentAction</text>
+  <text x="524" y="582" class="small-text">final_answer | builtin_call</text>
+  <rect x="500" y="618" rx="12" ry="12" width="280" height="58" class="side" />
+  <text x="524" y="650" class="small-text">loop 根据 action 类型分支处理</text>
+
+  <rect x="890" y="530" rx="12" ry="12" width="280" height="76" class="box" />
+  <text x="914" y="560" class="box-title">ActionExecutor</text>
+  <text x="914" y="582" class="small-text">executeBuiltinCall(action)</text>
+  <rect x="890" y="618" rx="12" ry="12" width="280" height="58" class="side" />
+  <text x="914" y="650" class="small-text">DemoExecutor 是当前实现</text>
+
+  <path d="M 640 416 L 640 470 L 250 470 L 250 530" class="arrow" />
+  <path d="M 390 568 L 500 568" class="arrow" />
+  <path d="M 780 568 L 890 568" class="arrow" />
+  <text x="474" y="692" class="flow">主执行链：decideNextAction -&gt; AgentAction -&gt; executeBuiltinCall</text>
+
+  <rect x="40" y="725" rx="18" ry="18" width="1200" height="200" fill="#f7f1ff" class="layer" />
+  <text x="64" y="755" class="layer-title">STATE / DATA LAYER</text>
+  <rect x="100" y="790" rx="12" ry="12" width="250" height="88" class="box" />
+  <text x="124" y="820" class="box-title">AgentLoopContext</text>
+  <text x="124" y="842" class="small-text">userInput / steps / trace</text>
+  <text x="124" y="860" class="small-text">供 model 决策使用</text>
+
+  <rect x="390" y="790" rx="12" ry="12" width="250" height="88" class="box" />
+  <text x="414" y="820" class="box-title">AgentTraceItem</text>
+  <text x="414" y="842" class="small-text">model_decision</text>
+  <text x="414" y="860" class="small-text">action_result</text>
+
+  <rect x="680" y="790" rx="12" ry="12" width="220" height="88" class="box" />
+  <text x="704" y="820" class="box-title">BuiltinResult</text>
+  <text x="704" y="842" class="small-text">ok + output</text>
+  <text x="704" y="860" class="small-text">来自 executor</text>
+
+  <rect x="940" y="790" rx="12" ry="12" width="240" height="88" class="box" />
+  <text x="964" y="820" class="box-title">AgentRunResult</text>
+  <text x="964" y="842" class="small-text">completed / max_steps_exceeded</text>
+  <text x="964" y="860" class="small-text">answer / steps / trace</text>
+
+  <path d="M 640 676 L 640 725 L 515 725 L 515 790" class="dash" />
+  <path d="M 1030 606 L 1030 790" class="dash" />
+  <path d="M 1140 834 L 1140 240" class="dash" />
+  <path d="M 1140 240 L 1140 205" class="dash" />
+  <text x="728" y="708" class="note">状态沉淀弱化为单组虚线，不再从多个节点分别向下拉线</text>
+  <text x="1082" y="510" class="note">最终结果回到输出</text>
+</svg>

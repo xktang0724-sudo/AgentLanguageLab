@@ -1,0 +1,11 @@
+{
+  "name": "agent-language-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test dist/tests/agent/*.test.js",
+    "demo": "RUN_AGENT_DEMO=true node dist/src/demo/run-demo.js"
+  }
+}
