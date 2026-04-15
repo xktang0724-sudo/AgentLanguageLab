@@ -1,10 +1,23 @@
 import { runAgentLoop } from "../agent/agent-loop.js";
+import type { ModelClient } from "../agent/model-client.js";
 import type { AgentRunResult } from "../agent/types.js";
+import { loadRuntimeEnvFiles } from "../model/load-env.js";
+import { createRuntimeModel } from "../model/runtime-model.js";
+import type { ModelRuntimeEnvironment } from "../model/runtime-config.js";
 import { DemoExecutor } from "./demo-executor.js";
-import { DemoModel } from "./demo-model.js";
 
-export async function runDemo(userInput: string): Promise<AgentRunResult> {
-  const model = new DemoModel();
+loadRuntimeEnvFiles();
+
+type RunDemoOptions = {
+  env?: ModelRuntimeEnvironment;
+  model?: ModelClient;
+};
+
+export async function runDemo(
+  userInput: string,
+  options: RunDemoOptions = {},
+): Promise<AgentRunResult> {
+  const model = options.model ?? createRuntimeModel({ env: options.env });
   const executor = new DemoExecutor();
 
   return runAgentLoop({

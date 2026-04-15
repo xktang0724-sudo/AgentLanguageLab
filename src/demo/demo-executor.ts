@@ -1,5 +1,6 @@
 import { ToolRegistry } from "../agent/action-executor.js";
 import type { ToolDefinition } from "../agent/types.js";
+import { ORDER_STATUS_VALUES } from "./demo-tool-catalog.js";
 
 type LookupOrderInput = {
   orderId: string;
@@ -7,7 +8,7 @@ type LookupOrderInput = {
 
 type LookupOrderOutput = {
   orderId: string;
-  status: "processing" | "shipped" | "delayed" | "not_found";
+  status: (typeof ORDER_STATUS_VALUES)[number];
   estimatedDelivery: string | null;
 };
 
@@ -73,7 +74,7 @@ const draftReplyTool: ToolDefinition<DraftReplyInput, DraftReplyOutput, "draftRe
     }
 
     const status = readRequiredString(value, "status");
-    if (!["processing", "shipped", "delayed", "not_found"].includes(status)) {
+    if (!ORDER_STATUS_VALUES.includes(status as DraftReplyInput["status"])) {
       throw new Error(`Unsupported order status: ${status}`);
     }
 

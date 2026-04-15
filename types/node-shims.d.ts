@@ -4,6 +4,16 @@ declare module "node:assert/strict" {
   interface AssertModule extends AssertFn {
     equal(actual: unknown, expected: unknown, message?: string): void;
     deepEqual(actual: unknown, expected: unknown, message?: string): void;
+    throws(
+      block: () => unknown,
+      error?: RegExp | ((error: unknown) => boolean),
+      message?: string,
+    ): void;
+    rejects(
+      block: () => Promise<unknown>,
+      error?: RegExp | ((error: unknown) => boolean),
+      message?: string,
+    ): Promise<void>;
   }
 
   const assert: AssertModule;

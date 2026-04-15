@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <defs>
+    <style>
+      .title { font: 700 28px sans-serif; fill: #0f172a; }
+      .label { font: 600 16px sans-serif; fill: #0f172a; }
+      .text { font: 14px sans-serif; fill: #334155; }
+      .small { font: 12px sans-serif; fill: #475569; }
+      .box { rx: 18; ry: 18; stroke-width: 2; }
+      .arrow { stroke: #334155; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
+    </marker>
+  </defs>
+
+  <rect width="1200" height="760" fill="#f8fafc" />
+  <text x="40" y="52" class="title">Agent Loop With Runtime Model Selector</text>
+
+  <rect x="40" y="100" width="200" height="84" class="box" fill="#dbeafe" stroke="#2563eb" />
+  <text x="62" y="132" class="label">User Input</text>
+  <text x="62" y="158" class="text">Where is order ORD-1001?</text>
+
+  <rect x="300" y="88" width="280" height="116" class="box" fill="#e2e8f0" stroke="#475569" />
+  <text x="324" y="124" class="label">runDemo()</text>
+  <text x="324" y="150" class="text">Creates runtime model + DemoExecutor</text>
+  <text x="324" y="174" class="text">Injects orders:read permission</text>
+
+  <rect x="650" y="74" width="500" height="160" class="box" fill="#ecfccb" stroke="#65a30d" />
+  <text x="674" y="108" class="label">Runtime Model Selector</text>
+  <text x="674" y="134" class="text">Reads AGENT_MODEL_MODE and AGENT_MODEL_ID</text>
+  <text x="674" y="158" class="text">demo -&gt; DemoModel</text>
+  <text x="674" y="182" class="text">dev -&gt; validate provider key and build AI SDK model</text>
+  <text x="674" y="206" class="small">Current providers: OpenAI, Anthropic</text>
+
+  <rect x="650" y="288" width="220" height="96" class="box" fill="#fae8ff" stroke="#9333ea" />
+  <text x="674" y="322" class="label">DemoModel</text>
+  <text x="674" y="348" class="text">Local deterministic model</text>
+
+  <rect x="930" y="274" width="220" height="124" class="box" fill="#fee2e2" stroke="#dc2626" />
+  <text x="954" y="308" class="label">VercelAiModelClient</text>
+  <text x="954" y="334" class="text">Uses AI SDK structured output</text>
+  <text x="954" y="358" class="text">Returns AgentAction only</text>
+
+  <rect x="910" y="444" width="240" height="124" class="box" fill="#fff7ed" stroke="#ea580c" />
+  <text x="934" y="478" class="label">AI SDK Provider Resolver</text>
+  <text x="934" y="504" class="text">openai:&lt;model&gt;</text>
+  <text x="934" y="528" class="text">anthropic:&lt;model&gt;</text>
+
+  <rect x="640" y="610" width="220" height="92" class="box" fill="#ede9fe" stroke="#7c3aed" />
+  <text x="664" y="644" class="label">OpenAI Provider</text>
+  <text x="664" y="670" class="text">@ai-sdk/openai</text>
+
+  <rect x="930" y="610" width="220" height="92" class="box" fill="#fce7f3" stroke="#db2777" />
+  <text x="954" y="644" class="label">Anthropic Provider</text>
+  <text x="954" y="670" class="text">@ai-sdk/anthropic</text>
+
+  <rect x="280" y="300" width="340" height="256" class="box" fill="#d1fae5" stroke="#059669" />
+  <text x="304" y="336" class="label">AgentLoop</text>
+  <text x="304" y="362" class="text">Owns AgentSessionState</text>
+  <text x="304" y="386" class="text">Creates ModelContextView</text>
+  <text x="304" y="410" class="text">Records model_decision / tool_observation</text>
+  <text x="304" y="434" class="text">Maintains messages and counters</text>
+  <text x="304" y="458" class="text">Terminates on final_answer / ask_user / handoff</text>
+
+  <rect x="40" y="330" width="180" height="108" class="box" fill="#fef3c7" stroke="#d97706" />
+  <text x="64" y="364" class="label">DemoExecutor</text>
+  <text x="64" y="390" class="text">ToolRegistry</text>
+  <text x="64" y="414" class="text">Executes tool_call</text>
+
+  <rect x="40" y="492" width="180" height="140" class="box" fill="#cffafe" stroke="#0891b2" />
+  <text x="64" y="526" class="label">Demo Tools</text>
+  <text x="64" y="552" class="text">lookupOrder</text>
+  <text x="64" y="576" class="text">draftReply</text>
+  <text x="64" y="600" class="small">Return ToolObservation</text>
+
+  <path d="M 240 142 L 300 142" class="arrow" />
+  <path d="M 580 142 L 650 142" class="arrow" />
+  <path d="M 760 234 L 760 288" class="arrow" />
+  <path d="M 1040 234 L 1040 274" class="arrow" />
+  <path d="M 980 398 L 980 444" class="arrow" />
+  <path d="M 960 568 L 760 610" class="arrow" />
+  <path d="M 1040 568 L 1040 610" class="arrow" />
+  <path d="M 760 384 L 620 384" class="arrow" />
+  <path d="M 930 336 L 620 336" class="arrow" />
+  <path d="M 280 382 L 220 382" class="arrow" />
+  <path d="M 130 438 L 130 492" class="arrow" />
+  <path d="M 220 566 L 280 492" class="arrow" />
+
+  <text x="472" y="280" class="small">ModelContextView</text>
+  <text x="176" y="474" class="small">tool_call</text>
+  <text x="208" y="646" class="small">ToolObservation</text>
+</svg>

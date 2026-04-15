@@ -2,22 +2,16 @@
 
 这是一个学习型实验仓库，用来逐步学习 AI 编程语法、AI agent 基础模式，以及它们在 TypeScript / JavaScript / Python 中的表达方式。
 
-当前仓库已经落地的第一个最小示例是：
+当前仓库的最小示例已经包含：
 
 - 一个最小可运行的 `agent loop`
 - 基于 `ModelClient` 抽象做下一步决策
-- 把原本的响应生成逻辑拆成：
-  - `decideNextAction()`
-  - `executeBuiltinCall()`
-- loop 内部持有 `AgentSessionState`
-- model 只拿到只读的 `ModelContextView`
-- executor 只拿到最小 `ExecutionContext`
-- 支持 `AgentAction`
-  - `final_answer`
-  - `builtin_call`
-- 支持 `maxSteps`
-- 支持结构化 `trace`
-- 使用 `DemoModel + DemoExecutor` 跑通完整骨架
+- `tool_call / ask_user / handoff_to_human / final_answer` 四类动作
+- 结构化 `trace`
+- 一个客服场景 demo
+- 一个可切换的模型接入层
+  - `demo` 模式走本地 `DemoModel`
+  - `dev` 模式走 `Vercel AI SDK`
 
 ## 当前目录
 
@@ -31,27 +25,80 @@ src/
   demo/
     demo-model.ts
     demo-executor.ts
+    demo-tool-catalog.ts
     run-demo.ts
+  model/
+    runtime-config.ts
+    runtime-model.ts
+    vercel-ai-model-client.ts
 tests/
   agent/
     agent-loop.test.ts
+    model-runtime.test.ts
 docs/
   architecture/
     INDEX.md
-    v0.0.1/
+    v0.0.4/
       README.md
-      minimal-agent-loop-architecture.svg
+      model-runtime-agent-loop-architecture.svg
 ```
 
 ## 运行环境
 
-当前项目很轻，没有额外 npm 依赖，但需要本机有这些工具：
+需要本机有这些工具：
 
 - Node.js
 - npm
-- TypeScript 编译器 `tsc`
 
-如果你本机执行 `tsc --version` 有输出，就可以直接按下面步骤运行。
+安装依赖：
+
+```bash
+npm install
+```
+
+项目启动时会自动读取根目录下的 `.env.local`。
+
+## 模型模式
+
+模型接入层由 `AGENT_MODEL_MODE` 控制：
+
+- `demo`
+  - 默认值
+  - 忽略真实模型配置
+  - 直接使用本地 `DemoModel`
+- `dev`
+  - 接入 `Vercel AI SDK`
+  - 当前内置支持 `OpenAI` 和 `Anthropic`
+  - 模型仍然输出结构化 `AgentAction`
+  - 工具执行仍然走本地 `DemoExecutor`
+
+### 环境变量
+
+```text
+AGENT_MODEL_MODE=demo | dev
+AGENT_MODEL_ID=<provider>:<model-name>
+AGENT_MODEL_BASE_URL=...
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+```
+
+推荐做法：
+
+1. 复制 `.env.local.example` 为 `.env.local`
+2. 按你的模型配置修改
+3. 直接运行 `npm run demo`
+
+约束：
+
+- `AGENT_MODEL_MODE` 默认是 `demo`
+- `AGENT_MODEL_MODE=dev` 时必须设置 `AGENT_MODEL_ID`
+- `AGENT_MODEL_ID` 当前只支持：
+  - `openai:<model-name>`
+  - `anthropic:<model-name>`
+- 选中哪个 provider，就必须提供对应的 API key
+- 如果你要走代理、中转或自建网关，可以额外设置：
+  - `AGENT_MODEL_BASE_URL`
+  - 或 provider 专属别名 `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL`
 
 ## 如何启动
 
@@ -61,69 +108,141 @@ docs/
 npm run build
 ```
 
-这会把 TypeScript 编译到 `dist/`。
-
-### 2. 运行 demo
+### 2. 运行 demo 模式
 
 ```bash
 npm run demo
 ```
 
-当前 demo 会执行：
+这会：
 
-1. 创建 `DemoModel`
-2. 创建 `DemoExecutor`
-3. 调用 `runAgentLoop()`
-4. 输出最终结果 JSON
+1. 读取 `AGENT_MODEL_MODE`
+2. 默认创建 `DemoModel`
+3. 创建 `DemoExecutor`
+4. 调用 `runAgentLoop()`
+5. 输出最终结果 JSON
 
-预期你会看到类似输出：
+### 3. 运行 dev 模式
+
+先创建配置文件：
+
+```bash
+cp .env.local.example .env.local
+```
+
+把 `.env.local` 改成你要的模式。
+
+最小 `demo` 配置：
+
+```text
+AGENT_MODEL_MODE=demo
+```
+
+OpenAI 配置：
+
+```text
+AGENT_MODEL_MODE=dev
+AGENT_MODEL_ID=openai:gpt-4.1
+OPENAI_API_KEY=your-openai-key
+AGENT_MODEL_BASE_URL=https://your-openai-compatible-gateway/v1
+```
+
+Anthropic 配置：
+
+```text
+AGENT_MODEL_MODE=dev
+AGENT_MODEL_ID=anthropic:claude-sonnet-4-5
+ANTHROPIC_API_KEY=your-anthropic-key
+AGENT_MODEL_BASE_URL=https://your-anthropic-gateway.example.com
+```
+
+OpenAI 示例：
+
+```bash
+npm run demo
+```
+
+Anthropic 示例：
+
+```bash
+npm run demo
+```
+
+`dev` 模式下的数据流是：
+
+1. `runDemo()` 根据环境变量创建 runtime model
+2. `VercelAiModelClient` 读取当前 `ModelContextView`
+3. 模型通过结构化输出返回一个 `AgentAction`
+4. 如果是 `tool_call`，仍由本地 `DemoExecutor` 执行 `lookupOrder` / `draftReply`
+5. loop 继续推进直到 `completed`、`needs_user_input`、`handoff_requested` 或 `max_steps_exceeded`
+
+如果你没有设置调用地址，OpenAI 和 Anthropic 会默认走各自官方地址。
+
+## 如何接入我的模型
+
+如果你的模型就在 `OpenAI` 或 `Anthropic` 体系内，只需要两步：
+
+1. 在 `.env.local` 里选一个 `AGENT_MODEL_ID`
+2. 在 `.env.local` 里设置对应 provider 的 API key
+
+例如：
+
+```bash
+cp .env.local.example .env.local
+```
+
+然后把 `.env.local` 改成：
+
+```text
+AGENT_MODEL_MODE=dev
+AGENT_MODEL_ID=openai:gpt-4.1-mini
+OPENAI_API_KEY=your-openai-key
+AGENT_MODEL_BASE_URL=https://your-openai-compatible-gateway/v1
+```
+
+再运行：
+
+```bash
+npm run demo
+```
+
+如果你要接新的 provider，当前落点在：
+
+- `src/model/runtime-config.ts`
+- `src/model/runtime-model.ts`
+- `src/model/vercel-ai-model-client.ts`
+
+扩展方式是：
+
+1. 在 `runtime-config.ts` 扩展支持的 provider 前缀
+2. 在 `runtime-model.ts` 增加对应的 AI SDK provider resolver
+3. 保持 `VercelAiModelClient` 输出的仍然是统一 `AgentAction`
+
+也就是说，新 provider 只改模型接入层，不需要改 `agent-loop` 和工具执行层。
+
+## 当前 demo 行为
+
+- 缺订单号时，返回 `ask_user`
+- 输入包含 `chargeback / fraud / lawyer / legal` 时，返回 `handoff_to_human`
+- 正常订单查询时，模型先发出 `lookupOrder`
+- 拿到订单 observation 后，再发出 `draftReply`
+- 拿到回复草稿 observation 后，返回 `final_answer`
+
+默认 demo 模式的示例输出会类似这样：
 
 ```json
 {
   "status": "completed",
-  "answer": "Done: hello",
-  "steps": 1,
-  "trace": [
-    {
-      "kind": "model_decision",
-      "action": {
-        "type": "builtin_call",
-        "name": "echo",
-        "input": {
-          "text": "hello"
-        }
-      }
-    },
-    {
-      "kind": "action_result",
-      "action": {
-        "type": "builtin_call",
-        "name": "echo",
-        "input": {
-          "text": "hello"
-        }
-      },
-      "result": {
-        "ok": true,
-        "output": {
-          "text": "hello"
-        }
-      }
-    },
-    {
-      "kind": "model_decision",
-      "action": {
-        "type": "final_answer",
-        "answer": "Done: hello"
-      }
-    }
-  ]
+  "answer": "Your order ORD-1001 has shipped and is expected to arrive by 2026-04-18.",
+  "question": null,
+  "handoffReason": null,
+  "steps": 3,
+  "modelCallCount": 3,
+  "toolCallCount": 2
 }
 ```
 
 ## 如何测试
-
-先编译，再运行测试：
 
 ```bash
 npm run build
@@ -132,19 +251,13 @@ npm test
 
 当前测试覆盖了这些行为：
 
-- model 直接返回 `final_answer`
-- model 先返回 `builtin_call`，再返回 `final_answer`
-- 一直没有 `final_answer` 时，loop 在 `maxSteps` 后停止
-- model 收到的是只读快照视图，executor 收到的是最小执行上下文
-- `DemoModel + DemoExecutor` 能跑通完整示例
+- loop 的终止、只读上下文和 trace 行为
+- `DemoModel + DemoExecutor` 的完整客服流程
+- `AGENT_MODEL_MODE` 和 `AGENT_MODEL_ID` 的配置解析
+- `VercelAiModelClient` 的结构化输出映射
+- `dev` 模式下真实模型 client 与本地工具链的端到端联动
 
 ## 如何调试
-
-当前最直接的调试方式，是先编译，再调试 `dist/` 里的编译结果。
-
-原因是现在项目还没有配置 source map，所以最稳定的方式是先看编译后的 JS 行为。
-
-### 方式 1：命令行调试
 
 先编译：
 
@@ -152,76 +265,56 @@ npm test
 npm run build
 ```
 
-再用 Node 调试 demo：
+再调试编译后的入口：
 
 ```bash
 RUN_AGENT_DEMO=true node --inspect-brk dist/src/demo/run-demo.js
 ```
 
-然后你可以：
-
-- 打开 Chrome 的 `chrome://inspect`
-- 或者用支持 Node Inspector 的 IDE 连接进程
-
-### 方式 2：WebStorm 调试
-
-如果你在用 WebStorm，建议这样配：
-
-1. 先运行一次：
+如果你要调试 `dev` 模式，额外带上模型环境变量，例如：
 
 ```bash
-npm run build
+AGENT_MODEL_MODE=dev \
+AGENT_MODEL_ID=openai:gpt-4.1 \
+OPENAI_API_KEY=your-openai-key \
+RUN_AGENT_DEMO=true \
+node --inspect-brk dist/src/demo/run-demo.js
 ```
 
-2. 新建一个 `Node.js` 运行配置
-3. `JavaScript file` 选择：
-
-```text
-dist/src/demo/run-demo.js
-```
-
-4. 添加环境变量：
-
-```text
-RUN_AGENT_DEMO=true
-```
-
-5. 直接点击 Debug
-
-当前更适合在这些文件里下断点看逻辑：
+当前更适合下断点的文件：
 
 - `dist/src/demo/run-demo.js`
-- `dist/src/demo/demo-model.js`
-- `dist/src/demo/demo-executor.js`
+- `dist/src/model/runtime-model.js`
+- `dist/src/model/vercel-ai-model-client.js`
 - `dist/src/agent/agent-loop.js`
 
 ## 建议阅读顺序
 
-如果你想按理解成本最低的顺序看代码，建议这样读：
+建议按这个顺序看：
 
 1. `src/demo/run-demo.ts`
-2. `src/demo/demo-model.ts`
-3. `src/demo/demo-executor.ts`
-4. `src/agent/agent-loop.ts`
-5. `src/agent/types.ts`
+2. `src/model/runtime-model.ts`
+3. `src/model/vercel-ai-model-client.ts`
+4. `src/demo/demo-model.ts`
+5. `src/demo/demo-executor.ts`
+6. `src/agent/agent-loop.ts`
+7. `src/agent/types.ts`
 
 ## 当前架构文档
 
 架构文档在这里：
 
 - [docs/architecture/INDEX.md](./docs/architecture/INDEX.md)
-- [docs/architecture/v0.0.1/README.md](./docs/architecture/v0.0.1/README.md)
+- [docs/architecture/v0.0.4/README.md](./docs/architecture/v0.0.4/README.md)
 
 架构图文件在这里：
 
-- [docs/architecture/v0.0.1/minimal-agent-loop-architecture.svg](./docs/architecture/v0.0.1/minimal-agent-loop-architecture.svg)
+- [docs/architecture/v0.0.4/model-runtime-agent-loop-architecture.svg](./docs/architecture/v0.0.4/model-runtime-agent-loop-architecture.svg)
 
 ## 下一步可以做什么
 
-这个最小骨架已经适合继续往上叠加。下一步常见方向有：
-
-- 把 `DemoModel` 换成真实模型 client
-- 给 `builtin_call` 增加 schema 或更强的类型约束
-- 增加更多 action 类型
-- 引入 memory
-- 给调试链路补 source map，直接在 TypeScript 源码上断点
+- 给 `VercelAiModelClient` 增加更多 provider
+- 给模型决策 prompt 加更细的 guardrails
+- 给 tool schema 做更强的共享类型约束
+- 引入 memory / RAG
+- 把 demo 场景扩展成多轮用户输入
