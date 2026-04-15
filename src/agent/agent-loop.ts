@@ -1,6 +1,15 @@
 import type { ActionExecutor } from "./action-executor.js";
 import type { ModelClient } from "./model-client.js";
-import type { AgentRunResult, AgentSessionState, ExecutionContext, Message, ModelContextView } from "./types.js";
+import type {
+  AgentAction,
+  AgentRunResult,
+  AgentSessionState,
+  ExecutionContext,
+  Message,
+  ModelContextView,
+  ToolCallAction,
+  ToolObservation,
+} from "./types.js";
 
 export type RunAgentLoopInput = {
   model: ModelClient;
@@ -8,15 +17,23 @@ export type RunAgentLoopInput = {
   userInput: string;
   maxSteps: number;
   sessionId?: string;
+  traceId?: string;
+  userId?: string;
+  permissions?: readonly string[];
   metadata?: Record<string, unknown>;
 };
 
 export async function runAgentLoop(input: RunAgentLoopInput): Promise<AgentRunResult> {
   const state: AgentSessionState = {
     sessionId: input.sessionId ?? createSessionId(),
+    traceId: input.traceId ?? createTraceId(),
+    userId: input.userId,
     userInput: input.userInput,
     currentStep: 0,
+    modelCallCount: 0,
+    toolCallCount: 0,
     status: "running",
+    permissions: input.permissions ? [...input.permissions] : [],
     messages: [
       {
         role: "user",
@@ -32,28 +49,31 @@ export async function runAgentLoop(input: RunAgentLoopInput): Promise<AgentRunRe
       const context = createModelContextView(state);
 
       const action = await input.model.decideNextAction(context);
+      state.modelCallCount += 1;
       state.trace.push({
         kind: "model_decision",
         action,
       });
 
-      if (action.type === "final_answer") {
-        state.status = "completed";
-        state.messages.push({
-          role: "assistant",
-          content: action.answer,
-        });
-
-        return createRunResult(state, action.answer);
+      const terminalResult = handleTerminalAction(state, action);
+      if (terminalResult) {
+        return terminalResult;
+      }
+      if (action.type !== "tool_call") {
+        throw new Error(`Unsupported action type: ${action.type}`);
       }
 
-      const result = await input.executor.executeBuiltinCall(action, createExecutionContext(state));
-      state.trace.push({
-        kind: "action_result",
+      const observation = await input.executor.executeToolCall(
         action,
-        result,
+        createExecutionContext(state),
+      );
+      state.toolCallCount += 1;
+      state.trace.push({
+        kind: "tool_observation",
+        action,
+        observation,
       });
-      state.messages.push(createToolMessage(action.name, result.output));
+      state.messages.push(createToolMessage(action, observation));
       state.currentStep += 1;
     }
   } catch (error) {
@@ -68,9 +88,13 @@ export async function runAgentLoop(input: RunAgentLoopInput): Promise<AgentRunRe
 
 function createRunResult(state: AgentSessionState, answer: string | null): AgentRunResult {
   return {
-    status: state.status === "completed" ? "completed" : "max_steps_exceeded",
+    status: normalizeRunStatus(state.status),
     answer,
-    steps: state.currentStep,
+    question: null,
+    handoffReason: null,
+    steps: state.modelCallCount,
+    modelCallCount: state.modelCallCount,
+    toolCallCount: state.toolCallCount,
     trace: state.trace,
   };
 }
@@ -80,8 +104,11 @@ function createModelContextView(state: AgentSessionState): ModelContextView {
     sessionId: state.sessionId,
     userInput: state.userInput,
     currentStep: state.currentStep,
+    modelCallCount: state.modelCallCount,
+    toolCallCount: state.toolCallCount,
     recentEvents: cloneReadonly(state.trace),
     messages: cloneReadonly(state.messages),
+    permissions: cloneReadonly([...state.permissions]),
     metadata: state.metadata ? cloneReadonly(state.metadata) : undefined,
   };
 }
@@ -90,18 +117,81 @@ function createExecutionContext(state: AgentSessionState): ExecutionContext {
   return {
     sessionId: state.sessionId,
     currentStep: state.currentStep,
+    traceId: state.traceId,
+    userId: state.userId,
+    permissions: cloneReadonly([...state.permissions]),
     metadata: state.metadata ? cloneReadonly(state.metadata) : undefined,
   };
 }
 
-function createToolMessage(name: string, output: unknown): Message {
+function createToolMessage(action: ToolCallAction, observation: ToolObservation): Message {
   return {
     role: "tool",
     content: {
-      name,
-      output,
+      callId: action.callId,
+      toolName: action.toolName,
+      ok: observation.ok,
+      output: observation.output,
+      error: observation.error,
     },
   };
+}
+
+function handleTerminalAction(
+  state: AgentSessionState,
+  action: AgentAction,
+): AgentRunResult | null {
+  if (action.type === "final_answer") {
+    state.status = "completed";
+    state.messages.push({
+      role: "assistant",
+      content: action.answer,
+    });
+
+    return createRunResult(state, action.answer);
+  }
+
+  if (action.type === "ask_user") {
+    state.status = "needs_user_input";
+    state.messages.push({
+      role: "assistant",
+      content: action.question,
+    });
+
+    return {
+      ...createRunResult(state, null),
+      status: "needs_user_input",
+      question: action.question,
+    };
+  }
+
+  if (action.type === "handoff_to_human") {
+    state.status = "handoff_requested";
+    state.messages.push({
+      role: "assistant",
+      content: action.reason,
+    });
+
+    return {
+      ...createRunResult(state, null),
+      status: "handoff_requested",
+      handoffReason: action.reason,
+    };
+  }
+
+  return null;
+}
+
+function normalizeRunStatus(status: AgentSessionState["status"]): AgentRunResult["status"] {
+  if (
+    status === "completed" ||
+    status === "needs_user_input" ||
+    status === "handoff_requested"
+  ) {
+    return status;
+  }
+
+  return "max_steps_exceeded";
 }
 
 function cloneReadonly<T>(value: T): Readonly<T> {
@@ -121,4 +211,8 @@ function deepFreeze<T>(value: T): Readonly<T> {
 
 function createSessionId(): string {
   return `session-${Date.now()}`;
+}
+
+function createTraceId(): string {
+  return `trace-${Date.now()}`;
 }
