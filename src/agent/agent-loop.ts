@@ -1,6 +1,6 @@
 import type { ActionExecutor } from "./action-executor.js";
 import type { ModelClient } from "./model-client.js";
-import type { AgentRunResult, AgentSessionState, AgentTraceItem, ExecutionContext, Message, ModelContextView } from "./types.js";
+import type { AgentRunResult, AgentSessionState, ExecutionContext, Message, ModelContextView } from "./types.js";
 
 export type RunAgentLoopInput = {
   model: ModelClient;

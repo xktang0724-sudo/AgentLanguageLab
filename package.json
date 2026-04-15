@@ -7,5 +7,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "node --test dist/tests/agent/*.test.js",
     "demo": "RUN_AGENT_DEMO=true node dist/src/demo/run-demo.js"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
   }
 }
