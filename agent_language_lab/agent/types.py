@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, Mapping, TypeAlias
 
 
+# 会话状态：完整过程中的内部状态与最终返回给上层的结果状态
 AgentSessionStatus: TypeAlias = Literal[
     "running",
     "completed",
@@ -13,6 +14,7 @@ AgentSessionStatus: TypeAlias = Literal[
     "max_steps_exceeded",
 ]
 
+# 对外输出的 run 状态（失败在外层归一化为超步上限）
 AgentRunStatus: TypeAlias = Literal[
     "completed",
     "needs_user_input",
@@ -21,6 +23,7 @@ AgentRunStatus: TypeAlias = Literal[
 ]
 
 
+# 四类动作：模型每次只能返回一条下一步指令
 @dataclass(frozen=True, slots=True)
 class FinalAnswerAction:
     answer: str
@@ -47,11 +50,13 @@ class ToolCallAction:
     type: Literal["tool_call"] = field(default="tool_call", init=False)
 
 
+# Agent 每一轮决策可能返回的统一动作类型
 AgentAction: TypeAlias = (
     FinalAnswerAction | AskUserAction | HandoffToHumanAction | ToolCallAction
 )
 
 
+# 给工具执行器提供的上下文，避免把完整状态直接暴露给工具
 @dataclass(frozen=True, slots=True)
 class ExecutionContext:
     session_id: str
@@ -62,6 +67,7 @@ class ExecutionContext:
     metadata: Mapping[str, Any] | None = None
 
 
+# 工具执行结果：成功/失败都要可追踪，便于 loop 和结果归因
 @dataclass(frozen=True, slots=True)
 class ToolObservation:
     call_id: str
@@ -78,6 +84,7 @@ class Message:
     content: Any
 
 
+# 给 trace 使用的动作记录：模型决策和工具观察两种事件
 @dataclass(frozen=True, slots=True)
 class ModelDecisionTraceItem:
     action: AgentAction
@@ -91,9 +98,11 @@ class ToolObservationTraceItem:
     kind: Literal["tool_observation"] = field(default="tool_observation", init=False)
 
 
+# trace 中只保存这两种事件，便于模型视图和审计重放
 AgentTraceItem: TypeAlias = ModelDecisionTraceItem | ToolObservationTraceItem
 
 
+# 传给模型的只读视图：包含历史 trace、消息与计数器，避免模型修改可变状态
 @dataclass(frozen=True, slots=True)
 class ModelContextView:
     session_id: str
@@ -107,6 +116,7 @@ class ModelContextView:
     metadata: Mapping[str, Any] | None = None
 
 
+# 运行时内部状态：loop 专属，持续更新
 @dataclass(slots=True)
 class AgentSessionState:
     session_id: str
@@ -123,6 +133,7 @@ class AgentSessionState:
     metadata: dict[str, Any] | None = None
 
 
+# 统一返回结构：前端/CLI 只看这个结果，不直接依赖内部 state
 @dataclass(frozen=True, slots=True)
 class AgentRunResult:
     status: AgentRunStatus

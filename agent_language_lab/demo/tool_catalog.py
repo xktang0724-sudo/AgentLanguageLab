@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+# Demo 场景暴露给模型/文档的工具清单
 ORDER_STATUS_VALUES = ("processing", "shipped", "delayed", "not_found")
 
 
@@ -14,6 +15,7 @@ class DemoToolCatalogItem:
     output_shape: dict[str, str]
 
 
+# 一份结构化工具说明，可用于打印给模型或文档展示
 DEMO_TOOL_CATALOG: tuple[DemoToolCatalogItem, ...] = (
     DemoToolCatalogItem(
         name="lookupOrder",
@@ -45,6 +47,7 @@ DEMO_TOOL_CATALOG: tuple[DemoToolCatalogItem, ...] = (
 
 
 def format_demo_tool_catalog() -> str:
+    # 把结构化目录展开为可读文案，方便提示词拼接时直接嵌入
     items: list[str] = []
     for tool in DEMO_TOOL_CATALOG:
         input_lines = "\n".join(
